@@ -1,11 +1,12 @@
 -------------------------------------------------------------------------------------------------------
 --------------------------------  *** WATER BUOYANCY EXAMPLE ***  -------------------------------------
 -------------------------------------------------------------------------------------------------------
-
--- By iNSERT.CODE - http://insertcode.co.uk
+-- Updated to work with latest Corona build  by @hugozap
+-- Original code By iNSERT.CODE - http://insertcode.co.uk
 -- Version: 1.0
 -- 
 -- Sample code is MIT licensed
+
 
 -- Thanks to anyone who has had input in this code on the Corona SDK Forums
 -- Particularly 'horacebury'
@@ -24,10 +25,10 @@ display.setStatusBar(display.HiddenStatusBar)
 local physics = require("physics")
 physics.start()
 physics.setGravity( 0, 40 )
- 
+
 local gx, gy = physics.getGravity()
- 
- 
+
+
 -- FORWARD REFS
 
 local _W = display.contentWidth
@@ -54,37 +55,37 @@ local boxSize = 40 			-- Sets the size of the boxes
 -------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------
 
- 
- 
+
+
 -- CREATE SCREEN BOUNDARY
- 
+
 ground = display.newRect(0,0,_W,20)
 ground.x = _W * 0.5; ground.y = _H + (ground.height * 0.5)
- 
+
 ceiling = display.newRect(0,0,_W,20);
 ceiling.x = _W * 0.5; ceiling.y = 0 - (ceiling.height * 0.5)
- 
+
 leftWall = display.newRect(0,0,10,_H)
 leftWall.x = 0 - (leftWall.width * 0.5); leftWall.y = _H * 0.5
- 
+
 rightWall = display.newRect(0,0,10,_H)
 rightWall.x = _W + (rightWall.width * 0.5); rightWall.y = _H * 0.5
- 
+
 physics.addBody(ground, "static", {friction = 0.1})
 physics.addBody(ceiling, "static", {friction = 0.1})
 physics.addBody(leftWall, "static", {friction = 0.1})
 physics.addBody(rightWall, "static", {friction = 0.1})
- 
- 
+
+
 -- CREATE 'BOXES' DISPLAY GROUP & BOXES
- 
+
 -- A display group we can loop through -
 -- works just like a table, but allows us to perform other display functions upon the boxes as well.
 -- Be sure to use boxes.numChildren instead of #boxes when getting the number of boxes in the group,
 -- but otherwise it works just like a table (which is really just an array)
 
 local boxes = display.newGroup()
- 
+
 
 -- It adds that box to the 'boxes' display group
 
@@ -100,31 +101,33 @@ local function addBox()
         box:setFillColor( math.random(0,255), math.random(0,255), math.random(0,255) )
         
         physics.addBody( box, { density=3.0, friction=0.5 } )
-    
+
 end
 
- 
- 
+
+
 -- CREATE SET NUMBER OF BOXES (DEFINED IN SETTINGS ABOVE)
 
 for i=1, numberOfBoxes do
         addBox()
 end
- 
- 
+
+
 -- CREATE LIQUID
- 
+
 local liquid = display.newRect(0, 0, _W, _H * 0.5)
- 
+
 liquid:setFillColor(0, 102, 255)
 liquid.alpha = 0.3
-liquid:setReferencePoint(display.TopCenterReferencePoint)
+--liquid:setReferencePoint(display.TopCenterReferencePoint)
+liquid.anchorX = 0.5
+liquid.anchorY = 0
 liquid.x = _W * 0.5
 liquid.y = _H * 0.5
- 
- 
+
+
 -- TOUCH TO DRAG FUNCTION
-                
+
 local function dragBody(e)
         local body = e.target
         local phase = e.phase
@@ -134,60 +137,60 @@ local function dragBody(e)
                 stage:setFocus(body, e.id)
                 body.isFocus = true
                 body.tempJoint = physics.newJoint("touch", body, e.x, e.y)
-        elseif(phase == "moved") then
-                if(body.tempJoint ~= nil) then
-                        body.tempJoint:setTarget(e.x, e.y)
+                elseif(phase == "moved") then
+                        if(body.tempJoint ~= nil) then
+                                body.tempJoint:setTarget(e.x, e.y)
+                        end
+                        elseif(phase == "ended" or phase == "cancelled") then
+                        if(body.tempJoint ~= nil) then
+                                stage:setFocus(body, nil)
+                                body.isFocus = false
+                                body.tempJoint:removeSelf()
+                                body.tempJoint = nil
+                        end
                 end
-        elseif(phase == "ended" or phase == "cancelled") then
-                if(body.tempJoint ~= nil) then
-                        stage:setFocus(body, nil)
-                        body.isFocus = false
-                        body.tempJoint:removeSelf()
-                        body.tempJoint = nil
-                end
+
+                return true
         end
- 
-        return true
-end
- 
+
 
 -- LOOP TO MAKE ALL BOXES DRAGGABLE
 
 for i=1, boxes.numChildren do
         boxes[i]:addEventListener("touch", dragBody)
 end
- 
- 
+
+
 -- FLOAT/BUOYANCY FUNCTION
- 
+
 local function float()
         for i=1, boxes.numChildren do -- LOOP TO APPLY FORCES TO EACH BOX INDIVIDUALLY
-                
+
 				-- get the box from the display group
-                local box = boxes[i]
-                
+                                local box = boxes[i]
+
                 -- apply forces to box
                 if (box.y + (box.height * 0.5)) >= liquid.y then
-                        
-						local submergedPercent = math.floor (100 - (((liquid.y - box.y + (box.height * 0.5)) / box.height) * 100))
-                        
-						if submergedPercent > 100 then
-                                submergedPercent = 100
-                        end
-                        
-                        if submergedPercent > 40 then
-                                
-								local buoyancyForce = (box.mass * gy)
-                                box:applyForce( 0, buoyancyForce * -0.002, box.x, box.y )
-                                
-								box.linearDamping = 4 * liquidDensity
-								box.angularDamping = 5 * liquidDensity
-                        else
-                                box.linearDamping = 0
-                                box.angularDamping = 0
-                        end     
+
+                  local submergedPercent = math.floor (100 - (((liquid.y - box.y + (box.height * 0.5)) / box.height) * 100))
+
+                  if submergedPercent > 100 then
+                        submergedPercent = 100
+                end
+
+                if submergedPercent > 40 then
+
+                        local buoyancyForce = (box.mass * gy)
+                        box:applyForce( 0, buoyancyForce * -0.002, box.x, box.y )
+
+                        box.linearDamping = 4 * liquidDensity
+                        box.angularDamping = 5 * liquidDensity
+                else
+                        box.linearDamping = 0
+                        box.angularDamping = 0
                 end     
         end     
+end     
 end
- 
+
 Runtime:addEventListener( "enterFrame", float )
